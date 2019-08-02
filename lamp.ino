@@ -2,10 +2,13 @@
 
 CapacitiveSensor sensorA = CapacitiveSensor(4,2); // 1 megohm resistor between pins 4 & 2,
                                                   // pin 2 is sensor pin, add wire, foil
+
+int LED_PIN = 9;
+
 long baseline = 0;
 int calibrationCycles = 500;
 
-int HOVER_THRESHOLD = 20;
+int HOVER_THRESHOLD = 15;
 int TOUCH_THRESHOLD = 100;
 
 // State Variables
@@ -19,7 +22,7 @@ int lightValue = 0;
 int MAX_LIGHT_VALUE = 255;
 
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
 
   Serial.begin(9600);
 
@@ -33,24 +36,38 @@ void loop() {
   long change = (sensorAReading - baseline);
   
   detectInteraction(change);
-
-  if (TOUCHING == true && PREVIOUS_TOUCHING == false) {
-    if (lightState == LOW) {
-      lightState = HIGH;
-    } else if (lightState == HIGH) {
-      lightState = LOW;
-    }
-  }
+  toggleLightState();
 
   PREVIOUS_TOUCHING = TOUCHING;
 
+  adjustLights();
+}
+
+void adjustLights() {
   // adjust lights
   if (lightState == HIGH && TOUCHING) {
-    lightValue++;
+    if (lightValue < 250) {
+      lightValue = lightValue + 4;
+    }
+  } else if (HOVERING && lightState == LOW) {
+    if (lightValue < 6) {
+      lightValue++;
+    }
   } else if (lightState == LOW) {
-    lightValue = 0;
+    if (lightValue <= 6 && lightValue > 0) {
+      lightValue--;
+    } else {
+      lightValue = 0;  
+    }
   }
-  
+
+  analogWrite(LED_PIN, lightValue);
+}
+
+void toggleLightState() {
+  if (TOUCHING == true && PREVIOUS_TOUCHING == false) {
+    lightState = 1 - lightState;
+  }
 }
 
 void detectInteraction(long change) {
