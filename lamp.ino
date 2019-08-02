@@ -8,8 +8,14 @@ int calibrationCycles = 500;
 int HOVER_THRESHOLD = 20;
 int TOUCH_THRESHOLD = 100;
 
+// State Variables
+boolean HOVERING = false;
+boolean TOUCHING = false;
+boolean PREVIOUS_TOUCHING = false;
+
+boolean lightState = LOW;
+
 void setup() {
-  // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 
   Serial.begin(9600);
@@ -19,33 +25,51 @@ void setup() {
   calibrate();
 }
 
-// the loop function runs over and over again forever
 void loop() {
   long sensorAReading = sensorA.capacitiveSensor(30);
   long change = (sensorAReading - baseline);
 
-//  Serial.println(change);
+  detectInteraction(change);
 
-  
-  if (change > TOUCH_THRESHOLD) {
-    Serial.println("Touching!!");
-  } else if (change > HOVER_THRESHOLD) {
-    Serial.println("Hovering!");
+  if (TOUCHING == true && PREVIOUS_TOUCHING == false) {
+    if (lightState == LOW) {
+      lightState = HIGH;
+    } else if (lightState == HIGH) {
+      lightState = LOW;
+    }
   }
+
+  PREVIOUS_TOUCHING = TOUCHING;
+}
+
+void detectInteraction(long change) {
+  if (change > TOUCH_THRESHOLD) {
+    HOVERING = false;
+    TOUCHING = true;
+  } else if (change > HOVER_THRESHOLD) {
+    HOVERING = true;
+  } else {
+    HOVERING = false;
+    TOUCHING = false;
+  }
+
+  Serial.print("Hovering? ");
+  Serial.print(HOVERING);
+  Serial.print(", Touching? ");
+  Serial.print(TOUCHING);
+  Serial.print("Light State? ");
+  Serial.println(lightState);
 }
 
 void calibrate() {
   int sum= 0;
-  
+
   for (int i = 0; i < calibrationCycles ; i++) {
     long sensorAReading = sensorA.capacitiveSensor(30);
     sum += sensorAReading;
-    Serial.println(sensorAReading);
   }
 
   baseline = sum / calibrationCycles;
-  
-  for (int i = 0; i < 30; i++) {
-    Serial.println(baseline);
-  } 
+
+  Serial.println("baseline: " + baseline);
 }
