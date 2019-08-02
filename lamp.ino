@@ -8,8 +8,8 @@ int LED_PIN = 9;
 long baseline = 0;
 int calibrationCycles = 500;
 
-int HOVER_THRESHOLD = 15;
-int TOUCH_THRESHOLD = 100;
+int HOVER_THRESHOLD = 20;
+int TOUCH_THRESHOLD = 30;
 
 // State Variables
 boolean HOVERING = false;
@@ -34,7 +34,7 @@ void setup() {
 void loop() {
   long sensorAReading = sensorA.capacitiveSensor(30);
   long change = (sensorAReading - baseline);
-  
+  Serial.println(change);
   detectInteraction(change);
   toggleLightState();
 
@@ -46,18 +46,18 @@ void loop() {
 void adjustLights() {
   // adjust lights
   if (lightState == HIGH && TOUCHING) {
-    if (lightValue < 250) {
-      lightValue = lightValue + 4;
-    }
-  } else if (HOVERING && lightState == LOW) {
-    if (lightValue < 6) {
-      lightValue++;
+    if (lightValue < 255) {
+      if (lightValue == 0) {
+        lightValue = 5;
+      } else {
+        lightValue++;
+      }
     }
   } else if (lightState == LOW) {
-    if (lightValue <= 6 && lightValue > 0) {
+    if (lightValue <= 10 && lightValue > 0) {
       lightValue--;
     } else {
-      lightValue = 0;  
+      lightValue = 0;
     }
   }
 
@@ -81,14 +81,14 @@ void detectInteraction(long change) {
     TOUCHING = false;
   }
 
-  Serial.print("Light value: ");
-  Serial.print(lightValue);
-  Serial.print(", Hovering? ");
-  Serial.print(HOVERING);
-  Serial.print(", Touching? ");
-  Serial.print(TOUCHING);  
-  Serial.print("Light State? ");
-  Serial.println(lightState);
+//  Serial.print("Light value: ");
+//  Serial.print(lightValue);
+//  Serial.print(", Hovering? ");
+//  Serial.print(HOVERING);
+//  Serial.print(", Touching? ");
+//  Serial.print(TOUCHING);
+//  Serial.print("Light State? ");
+//  Serial.println(lightState);
 }
 
 void calibrate() {
