@@ -1,3 +1,4 @@
+#include <QuadraticEase.h>
 #include <CapacitiveSensor.h>
 
 CapacitiveSensor sensorA = CapacitiveSensor(4,2); // 3 megohm resistors between pins 4 & 2,
@@ -7,7 +8,7 @@ int LED_PIN = 9;
 
 // Interaction Thresholds
 int HOVER_THRESHOLD = 80;
-int TOUCH_THRESHOLD = 3;
+int TOUCH_THRESHOLD = 9;
 
 // Calibration
 long baseline = 0;
@@ -22,6 +23,14 @@ int readIndex = 0;              // the index of the current reading
 int total = 0;                  // the running total
 int average = 0;                // the average
 
+// easing
+QuadraticEase ease;
+const double STARTING_EASE_TIME = 1.5;
+const int STARTING_LIGHT_VALUE = 15; // i think starting at low values causes flicker
+double easedPosition = 0;
+double prevEasePosition = 0;
+double easeTime = STARTING_EASE_TIME;
+
 // State Variables
 boolean HOVERING = false;
 boolean TOUCHING = false;
@@ -34,10 +43,12 @@ int MAX_LIGHT_VALUE = 255;
 
 void setup() {
   pinMode(LED_PIN, OUTPUT);
-
   Serial.begin(9600);
-
   sensorA.set_CS_AutocaL_Millis(0xFFFFFFFF);
+
+  // setup easing
+  ease.setDuration(9);
+  ease.setTotalChangeInPosition(275);
 
   calibrate();
 
@@ -45,8 +56,6 @@ void setup() {
   for (int thisReading = 0; thisReading < numReadings; thisReading++) {
     readings[thisReading] = 0;
   }
-
-  Serial.println("calibrated");
 }
 
 void loop() {
@@ -54,9 +63,7 @@ void loop() {
   long change = (sensorAReading - sensorMax);
   
   smoothInput(change);
-  
-  Serial.println(average);
-  
+    
   detectInteraction();
   toggleLightState();
 
@@ -80,20 +87,35 @@ void smoothInput(long change) {
 }
 
 void adjustLights() {
-  // adjust lights
   if (lightState == HIGH && TOUCHING) {
-    if (lightValue < 255) {
-      if (lightValue == 0) {
-        lightValue = 5;
-      } else {
-        lightValue++;
-      }
-    }
+    incrementEase();
   } else if (lightState == LOW) {
-    lightValue = 0;
+    resetEase();
   }
 
+  Serial.println(lightValue);
+  
   analogWrite(LED_PIN, lightValue);
+}
+
+void incrementEase() {
+  if (lightValue < 255) {
+    lightValue = ease.easeInOut(easeTime);
+    double roundedPosition = round(lightValue);
+  
+    if (lightValue < STARTING_LIGHT_VALUE) { lightValue = 0; }
+  
+    easeTime += 0.013;
+    prevEasePosition = lightValue;
+  
+    delay(3);
+  }
+}
+
+void resetEase() {
+  easeTime = STARTING_EASE_TIME;
+  lightValue = 0;
+  prevEasePosition = 0;
 }
 
 void toggleLightState() {
@@ -121,7 +143,6 @@ void detectInteraction() {
 
 void calibrate() {
   int sum= 0;
-  int halfCycle = calibrationCycles / 2;
   
   for (int i = 0; i < calibrationCycles ; i++) {
     long sensorAReading = sensorA.capacitiveSensor(30);
@@ -135,8 +156,8 @@ void calibrate() {
     }
   }
   
-  pp("min: ", sensorMin);
-  pp("max: ", sensorMax);
+//  pp("min: ", sensorMin);
+//  pp("max: ", sensorMax);
 }
 
 // pretty print utility
