@@ -1,9 +1,13 @@
 #include <CapacitiveSensor.h>
 
-CapacitiveSensor sensorA = CapacitiveSensor(4,2); // 1 megohm resistor between pins 4 & 2,
+CapacitiveSensor sensorA = CapacitiveSensor(4,2); // 3 megohm resistors between pins 4 & 2,
                                                   // pin 2 is sensor pin, add wire, foil
 
 int LED_PIN = 9;
+
+// Interaction Thresholds
+int HOVER_THRESHOLD = 80;
+int TOUCH_THRESHOLD = 3;
 
 // Calibration
 long baseline = 0;
@@ -11,8 +15,12 @@ int calibrationCycles = 500;
 int sensorMin = 1000;
 int sensorMax = 0;
 
-int HOVER_THRESHOLD = 80;
-int TOUCH_THRESHOLD = 19;
+// Smoothing
+const int numReadings = 25;
+int readings[numReadings];      // the readings from the analog input
+int readIndex = 0;              // the index of the current reading
+int total = 0;                  // the running total
+int average = 0;                // the average
 
 // State Variables
 boolean HOVERING = false;
@@ -32,6 +40,12 @@ void setup() {
   sensorA.set_CS_AutocaL_Millis(0xFFFFFFFF);
 
   calibrate();
+
+  // initialize smoothing array
+  for (int thisReading = 0; thisReading < numReadings; thisReading++) {
+    readings[thisReading] = 0;
+  }
+
   Serial.println("calibrated");
 }
 
@@ -39,9 +53,11 @@ void loop() {
   long sensorAReading = sensorA.capacitiveSensor(30);
   long change = (sensorAReading - sensorMax);
   
-  Serial.println(change);
+  smoothInput(change);
   
-  detectInteraction(change);
+  Serial.println(average);
+  
+  detectInteraction();
   toggleLightState();
 
   PREVIOUS_TOUCHING = TOUCHING;
@@ -49,22 +65,32 @@ void loop() {
   adjustLights();
 }
 
+void smoothInput(long change) {
+  total = total - readings[readIndex];
+  readings[readIndex] = change;
+  total = total + readings[readIndex];
+
+  readIndex = readIndex + 1;
+
+  if (readIndex >= numReadings) {
+    readIndex = 0;
+  }
+
+  average = total / numReadings;
+}
+
 void adjustLights() {
   // adjust lights
   if (lightState == HIGH && TOUCHING) {
     if (lightValue < 255) {
-//      if (lightValue == 0) {
-//        lightValue = 5;
-//      } else {
+      if (lightValue == 0) {
+        lightValue = 5;
+      } else {
         lightValue++;
-//      }
+      }
     }
   } else if (lightState == LOW) {
-//    if (lightValue <= 10 && lightValue > 0) {
-//      lightValue--;
-//    } else {
-      lightValue = 0;
-//    }
+    lightValue = 0;
   }
 
   analogWrite(LED_PIN, lightValue);
@@ -76,29 +102,26 @@ void toggleLightState() {
   }
 }
 
-void detectInteraction(long change) {
-  if (change > TOUCH_THRESHOLD) {
+void detectInteraction() {
+  if (average> TOUCH_THRESHOLD) {
     HOVERING = false;
     TOUCHING = true;
-  } else if (change > HOVER_THRESHOLD) {
+  } else if (average> HOVER_THRESHOLD) {
     HOVERING = true;
   } else {
     HOVERING = false;
     TOUCHING = false;
   }
 
-//  Serial.print("Light value: ");
-//  Serial.print(lightValue);
-//  Serial.print(", Hovering? ");
-//  Serial.print(HOVERING);
-//  Serial.print(", Touching? ");
-//  Serial.print(TOUCHING);
-//  Serial.print("Light State? ");
-//  Serial.println(lightState);
+//  pp("Light value: ", lightValue);
+//  pp("Hovering? ", HOVERING);
+//  pp("Touching? ", TOUCHING);
+//  pp("Light State? ", lightState);
 }
 
 void calibrate() {
   int sum= 0;
+  int halfCycle = calibrationCycles / 2;
   
   for (int i = 0; i < calibrationCycles ; i++) {
     long sensorAReading = sensorA.capacitiveSensor(30);
