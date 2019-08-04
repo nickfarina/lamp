@@ -1,7 +1,7 @@
 #include <QuadraticEase.h>
 #include <CapacitiveSensor.h>
 
-CapacitiveSensor sensorA = CapacitiveSensor(4,2); // 3 megohm resistors between pins 4 & 2,
+CapacitiveSensor sensorA = CapacitiveSensor(2, 4); // 3 megohm resistors between pins 4 & 2,
                                                   // pin 2 is sensor pin, add wire, foil
 
 int LED_PIN = 9;
@@ -111,7 +111,7 @@ void incrementEase() {
   
     easeTime += EASE_TIME_STEP;
   
-    delay(3);
+    delay(4);
   }
 }
 
