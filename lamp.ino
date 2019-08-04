@@ -27,8 +27,9 @@ int average = 0;                // the average
 QuadraticEase ease;
 const double STARTING_EASE_TIME = 1.5;
 const int STARTING_LIGHT_VALUE = 15; // i think starting at low values causes flicker
+const double EASE_TIME_STEP = 0.013;
+
 double easedPosition = 0;
-double prevEasePosition = 0;
 double easeTime = STARTING_EASE_TIME;
 
 // State Variables
@@ -90,7 +91,11 @@ void adjustLights() {
   if (lightState == HIGH && TOUCHING) {
     incrementEase();
   } else if (lightState == LOW) {
-    resetEase();
+    if (lightValue > 0) {
+      decrementEase();
+    } else {
+      resetEase();
+    }
   }
 
   Serial.println(lightValue);
@@ -100,22 +105,25 @@ void adjustLights() {
 
 void incrementEase() {
   if (lightValue < 255) {
-    lightValue = ease.easeInOut(easeTime);
-    double roundedPosition = round(lightValue);
+    lightValue = round(ease.easeInOut(easeTime));
   
     if (lightValue < STARTING_LIGHT_VALUE) { lightValue = 0; }
   
-    easeTime += 0.013;
-    prevEasePosition = lightValue;
+    easeTime += EASE_TIME_STEP;
   
     delay(3);
   }
 }
 
+void decrementEase() {
+  easeTime -= (EASE_TIME_STEP * 10);
+  
+  lightValue = round(ease.easeInOut(easeTime));
+}
+
 void resetEase() {
   easeTime = STARTING_EASE_TIME;
   lightValue = 0;
-  prevEasePosition = 0;
 }
 
 void toggleLightState() {
